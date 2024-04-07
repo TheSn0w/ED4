@@ -13,6 +13,9 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
         super(scriptConsole);
         this.script = script;
     }
+    private int startingDungTokens = -1; // Initialized to -1 to indicate it's unset
+    private int CurrentDungTokens;
+    private int DifferenceDungTokens;
     private static float RGBToFloat(int rgbValue) {
         return rgbValue / 255.0f;
     }
@@ -33,7 +36,9 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
             if (ImGui.BeginTabBar("My bar", ImGuiWindowFlag.None.getValue())) {
                 if (ImGui.BeginTabItem("Settings", ImGuiWindowFlag.None.getValue())) {
                     script.runScript = ImGui.Checkbox("Run script", script.runScript);
-                    if(!script.useMaxGuild && !script.usePontifexRing)
+                    script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
+                    script.useBank = ImGui.Checkbox("Use Bank", script.useBank);
+                    /*if(!script.useMaxGuild && !script.usePontifexRing)
                     {
                         script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
                         if (script.useWarsRetreat) {
@@ -61,18 +66,24 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                     }
                     script.useDarkness = ImGui.Checkbox("Use Darkness", script.useDarkness);
                     script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
-                    script.usePrayerOrRestorePots = ImGui.Checkbox("Use Prayer Potions", script.usePrayerOrRestorePots);
+                    script.usePrayerOrRestorePots = ImGui.Checkbox("Use Prayer Potions", script.usePrayerOrRestorePots);*/
                     script.useDeflectMagic = ImGui.Checkbox("Use Deflect Magic", script.useDeflectMagic);
-                    script.useSorrow = ImGui.Checkbox("Use Sorrow", script.useSorrow);
+                    /*script.useSorrow = ImGui.Checkbox("Use Sorrow", script.useSorrow);*/
+                    script.useRuination = ImGui.Checkbox("Use Ruination", script.useRuination);
+                    script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
+                    script.useWeaponPoison = ImGui.Checkbox("Use Weapon Poison", script.useWeaponPoison);
+                    script.useInvokeDeath = ImGui.Checkbox("Use Invoke Death", script.useInvokeDeath);
                     ImGui.Text("My scripts state is: " + script.getBotState());
-                    if(ImGui.Button("Set State past portal (DEBUG)"))
+                    /*if(ImGui.Button("Set State past portal (DEBUG)"))
                     {
                         script.setBotState(MainScript.BotState.ATED4);
                     }
                     if(ImGui.Button("Set State to Idle (DEBUG)"))
                     {
                         script.setBotState(MainScript.BotState.IDLE);
-                    }
+                    }*/
+                    ImGui.SeparatorText("Quick Stats");
+                    updateAndDisplayDungTokens(script);
                     ImGui.PopStyleVar(3);
                     ImGui.EndTabItem();
                 }
@@ -97,6 +108,30 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
         long minutes = seconds / 60;
         long hours = minutes / 60;
         return hours + "h " + minutes % 60 + "m " + seconds % 60 + "s";
+    }
+    public void updateAndDisplayDungTokens(MainScript script) {
+        if (startingDungTokens == -1) {
+            startingDungTokens = script.getCurrentDungTokens(); // Initialize starting value
+        }
+
+        CurrentDungTokens = script.getCurrentDungTokens(); // Always fetch the latest value
+        DifferenceDungTokens = CurrentDungTokens - startingDungTokens; // Calculate difference
+
+        double hoursElapsed = getElapsedTimeHours(script.runStartTime);
+        long tokensPerHour = 0;
+        if (hoursElapsed > 0) { // Avoid division by zero
+            tokensPerHour = (long) (DifferenceDungTokens / hoursElapsed); // Calculate tokens earned per hour
+        }
+
+        // Displaying the information
+        ImGui.Text("Starting Tokens: " + startingDungTokens);
+        ImGui.Text("Current Amount: " + CurrentDungTokens);
+        ImGui.Text("Tokens earned: " + DifferenceDungTokens);
+        ImGui.SeparatorText("Approx. Tokens/Hour: " + tokensPerHour);
+    }
+    private double getElapsedTimeHours(long startTime) {
+        long timeRunning = System.currentTimeMillis() - startTime; // Elapsed time in milliseconds
+        return timeRunning / 3600000.0; // Convert milliseconds to hours
     }
 
     @Override
