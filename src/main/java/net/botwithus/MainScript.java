@@ -29,7 +29,6 @@ import net.botwithus.rs3.util.Regex;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -201,29 +200,42 @@ public class MainScript extends LoopingScript {
             return;
         }
         EntityResultSet<SceneObject> ZammyPortal = SceneObjectQuery.newQuery().name("Portal (The Zamorakian Undercity)").results();
-        if (!ZammyPortal.isEmpty()) {
-            SceneObject Portal = ZammyPortal.nearest();
-            if (Portal != null) {
-                Portal.interact("Enter");
-                println("Interacting with portal...");
+        if (ZammyPortal.isEmpty()) {
+            return;
+        }
+        SceneObject Portal = ZammyPortal.nearest();
+        if (Portal != null) {
+            boolean success = Portal.interact("Enter");
+            println("Interacted with portal: " + success);
 
-                boolean surgedAtCorrectLocation = Execution.delayUntil(15000, () -> {
-                    Coordinate playerCoord = getLocalPlayer().getCoordinate();
-                    if (playerCoord.getX() <= 3295 && playerCoord.getY() <= 10134) {
-                        Execution.delay(RandomGenerator.nextInt(600, 1500));
-                        ScriptConsole.println("Used Surge: " + ActionBar.useAbility("Surge"));
-                        return true;
-                    }
-                    return false;
-                });
-
-                if (surgedAtCorrectLocation) {
-                    Execution.delay(RandomGenerator.nextInt(200, 400));
-                    Portal.interact("Enter");
-                    println("Interacting with portal...");
-                    Execution.delayUntil(15000, () -> getLocalPlayer().getCoordinate().getRegionId() != 13214);
-                    botState = BotState.INTERACT_WITH_ZAMMY;
+            boolean surgedAtCorrectLocation = Execution.delayUntil(15000, () -> {
+                Coordinate playerCoord = getLocalPlayer().getCoordinate();
+                if (playerCoord.getX() <= 3295 && playerCoord.getY() <= 10134) {
+                    Execution.delay(RandomGenerator.nextInt(600, 1500));
+                    ScriptConsole.println("Used Surge: " + ActionBar.useAbility("Surge"));
+                    return true;
                 }
+                return false;
+            });
+
+            if (!surgedAtCorrectLocation) {
+                println("Failed to surge to correct location.");
+                return;
+            }
+
+            Execution.delay(RandomGenerator.nextInt(200, 400));
+            Portal.interact("Enter");
+            println("Interacted with portal: " + success);
+            if (!success) {
+                println("Failed to interact with portal.");
+                return;
+            }
+
+            boolean movedToNewRegion = Execution.delayUntil(15000, () -> getLocalPlayer().getCoordinate().getRegionId() != 13214);
+            if (movedToNewRegion) {
+                botState = BotState.INTERACT_WITH_ZAMMY;
+            } else {
+                println("Failed to move to the new region after entering portal.");
             }
         }
     }
@@ -270,7 +282,7 @@ public class MainScript extends LoopingScript {
                 if (altar != null && altar.validate()) {
                     boolean interacted = altar.interact("Pray");
                     if (interacted) {
-                        println("Interacting with Altar of War.");
+                        println("Interacting with Altar of War: " + interacted);
                         Execution.delay(RandomGenerator.nextInt(3500, 4900)); // Wait for the prayer points to potentially replenish
                     } else {
                         println("Failed to interact with Altar of War.");
@@ -428,81 +440,83 @@ public class MainScript extends LoopingScript {
     }
 
     public void attackMiniBoss() {
+        if (getLocalPlayer() != null) {
 
-        Coordinate targetCoordinate = new Coordinate(
-                getLocalPlayer().getCoordinate().getX() + 30,
-                getLocalPlayer().getCoordinate().getY() + 40,
-                getLocalPlayer().getCoordinate().getZ()
-        );
-        if (usePrayer) {
-            usePrayerOrRestorePots();
-        }
+            Coordinate targetCoordinate = new Coordinate(
+                    getLocalPlayer().getCoordinate().getX() + 30,
+                    getLocalPlayer().getCoordinate().getY() + 40,
+                    getLocalPlayer().getCoordinate().getZ()
+            );
+            if (usePrayer) {
+                usePrayerOrRestorePots();
+            }
 
-        if (VarManager.getVarbitValue(16768) == 0 && useDeflectMagic) {
-            ActionBar.usePrayer("Deflect Magic");
-            println("Activated Deflect Magic prayer.");
-            Execution.delay(RandomGenerator.nextInt(100, 500));
-        }
-
-
-        println("Moving towards the target coordinates.");
-        Movement.walkTo(targetCoordinate.getX(), targetCoordinate.getY(), false);
-        boolean reached = Execution.delayUntil(30000, () -> Distance.between(getLocalPlayer().getCoordinate(), targetCoordinate) <= 1);
-
-        if (reached) {
-            println("Reached target coordinates.");
-            if (VarManager.getVarbitValue(53280) == 0 && useRuination) {
-                ActionBar.usePrayer("Ruination");
-                println("Activated Ruination.");
+            if (VarManager.getVarbitValue(16768) == 0 && useDeflectMagic) {
+                ActionBar.usePrayer("Deflect Magic");
+                println("Activated Deflect Magic prayer.");
                 Execution.delay(RandomGenerator.nextInt(100, 500));
             }
 
-            EntityResultSet<Npc> npcQuery = NpcQuery.newQuery().name("Cerberus Juvenile").results();
-            if (!npcQuery.isEmpty()) {
-                println("Cerberus Juvenile found, attempting to attack.");
-                Npc boss = npcQuery.nearest();
-                if (boss != null && boss.interact("Attack")) {
-                    println("Attacked Cerberus Juvenile, now invoking death.");
-                    if (useInvokeDeath) {
-                        useInvokeDeath();
-                    }
-                    if (useOverload) {
-                        drinkOverloads();
-                    }
-                    if (useWeaponPoison) {
-                        useWeaponPoison();
-                    }
-                    while (true) {
-                        // Check if prayer or essence of finality needs to be used
-                        if (usePrayer) {
-                            usePrayerOrRestorePots();
-                        }
-                        if (useEssenceOfFinality) {
-                            essenceOfFinality();
-                        }
 
-                        // Check if the NPCs are no longer present
-                        boolean noNpcsLeft = Execution.delayUntil(1000, () -> { // Check every 10 seconds
-                            EntityResultSet<Npc> currentQuery = NpcQuery.newQuery().name("Cerberus Juvenile").results();
-                            return currentQuery.isEmpty();
-                        });
+            println("Moving towards the target coordinates.");
+            Movement.walkTo(targetCoordinate.getX(), targetCoordinate.getY(), false);
+            boolean reached = Execution.delayUntil(30000, () -> Distance.between(getLocalPlayer().getCoordinate(), targetCoordinate) <= 1);
 
-                        // If no NPCs are left, break the loop
-                        if (noNpcsLeft) {
-                            break;
-                        }
-                    }
-                    println("Assuming Cerberus Juvenile is defeated.");
-                    botState = BotState.IDLE;
-                } else {
-                    println("Failed to interact with Cerberus Juvenile.");
+            if (reached) {
+                println("Reached target coordinates.");
+                if (VarManager.getVarbitValue(53280) == 0 && useRuination) {
+                    ActionBar.usePrayer("Ruination");
+                    println("Activated Ruination.");
+                    Execution.delay(RandomGenerator.nextInt(100, 500));
                 }
+
+                EntityResultSet<Npc> npcQuery = NpcQuery.newQuery().name("Cerberus Juvenile").results();
+                if (!npcQuery.isEmpty()) {
+                    println("Cerberus Juvenile found, attempting to attack.");
+                    Npc boss = npcQuery.nearest();
+                    if (boss != null && boss.interact("Attack")) {
+                        println("Attacked Cerberus Juvenile, now invoking death.");
+                        if (useInvokeDeath) {
+                            useInvokeDeath();
+                        }
+                        if (useOverload) {
+                            drinkOverloads();
+                        }
+                        if (useWeaponPoison) {
+                            useWeaponPoison();
+                        }
+                        while (true) {
+                            // Check if prayer or essence of finality needs to be used
+                            if (usePrayer) {
+                                usePrayerOrRestorePots();
+                            }
+                            if (useEssenceOfFinality) {
+                                essenceOfFinality();
+                            }
+
+                            // Check if the NPCs are no longer present
+                            boolean noNpcsLeft = Execution.delayUntil(1000, () -> { // Check every 10 seconds
+                                EntityResultSet<Npc> currentQuery = NpcQuery.newQuery().name("Cerberus Juvenile").results();
+                                return currentQuery.isEmpty();
+                            });
+
+                            // If no NPCs are left, break the loop
+                            if (noNpcsLeft) {
+                                break;
+                            }
+                        }
+                        println("Assuming Cerberus Juvenile is defeated.");
+                        botState = BotState.IDLE;
+                    } else {
+                        println("Failed to interact with Cerberus Juvenile.");
+                    }
+                } else {
+                    println("No Cerberus Juvenile found.");
+                }
+                println("Run completed.");
             } else {
-                println("No Cerberus Juvenile found.");
+                println("Failed to reach the target coordinates within the time limit.");
             }
-            println("Run completed.");
-        } else {
-            println("Failed to reach the target coordinates within the time limit.");
         }
     }
 
