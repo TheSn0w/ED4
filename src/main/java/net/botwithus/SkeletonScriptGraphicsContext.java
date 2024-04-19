@@ -13,31 +13,81 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
         super(scriptConsole);
         this.script = script;
     }
+
     private int startingDungTokens = -1; // Initialized to -1 to indicate it's unset
     private int CurrentDungTokens;
     private int DifferenceDungTokens;
+    boolean isScriptRunning = false;
+    private String saveSettingsFeedbackMessage = "";
+
     private static float RGBToFloat(int rgbValue) {
         return rgbValue / 255.0f;
     }
 
     @Override
     public void drawSettings() {
-        ImGui.PushStyleColor(21, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 1.0f); // Button color
-        ImGui.PushStyleColor(18, RGBToFloat(255), RGBToFloat(255), RGBToFloat(255), 1.0f); // Checkbox Tick color
-        ImGui.PushStyleColor(5, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 1.0f); // Border Colour
+        ImGui.PushStyleColor(0, RGBToFloat(173), RGBToFloat(216), RGBToFloat(230), 1.0f); // Button color
+        ImGui.PushStyleColor(21, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); // Button color
+        ImGui.PushStyleColor(18, RGBToFloat(173), RGBToFloat(216), RGBToFloat(230), 0.5f); // Checkbox Tick color
+        ImGui.PushStyleColor(5, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); // Border Colour
         ImGui.PushStyleColor(2, RGBToFloat(0), RGBToFloat(0), RGBToFloat(0), 0.9f); // Background color
-        ImGui.PushStyleColor(7, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 1.0f); // Checkbox Background color
-        ImGui.PushStyleColor(11, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 1.0f); // Header Colour
-        ImGui.PushStyleColor(22, RGBToFloat(64), RGBToFloat(67), RGBToFloat(67), 1.0f); // Highlighted button color
-        ImGui.PushStyleColor(27, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 1.0f); //ImGUI separator Colour
-        ImGui.PushStyleColor(30, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 1.0f); //Corner Extender colour
-        if (ImGui.Begin("ED4 Bot", ImGuiWindowFlag.None.getValue())) {
-            ImGui.PushStyleVar(11, 50.f, 5f);
-            if (ImGui.BeginTabBar("My bar", ImGuiWindowFlag.None.getValue())) {
-                if (ImGui.BeginTabItem("Settings", ImGuiWindowFlag.None.getValue())) {
-                    script.runScript = ImGui.Checkbox("Run script", script.runScript);
-                    script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
-                    script.useBank = ImGui.Checkbox("Use Bank", script.useBank);
+        ImGui.PushStyleColor(7, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); // Checkbox Background color
+        ImGui.PushStyleColor(11, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); // Header Colour
+        ImGui.PushStyleColor(22, RGBToFloat(173), RGBToFloat(216), RGBToFloat(230), 0.5f); // Highlighted button color
+        ImGui.PushStyleColor(13, RGBToFloat(255), RGBToFloat(255), RGBToFloat(255), 0.5f); // Highlighted button color
+        ImGui.PushStyleColor(27, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); //ImGUI separator Colour
+        ImGui.PushStyleColor(30, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); //Corner Extender colour
+        ImGui.PushStyleColor(31, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); //Corner Extender colour
+        ImGui.PushStyleColor(32, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); //Corner Extender colour
+        ImGui.PushStyleColor(33, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); //Corner Extender colour
+        ImGui.PushStyleColor(3, RGBToFloat(47), RGBToFloat(79), RGBToFloat(79), 0.5f); //ChildBackground
+
+
+        ImGui.SetWindowSize(200.f, 200.f);
+        if (ImGui.Begin("Snows Token Farmer", ImGuiWindowFlag.None.getValue())) {
+            ImGui.PushStyleVar(1, 10.f, 5f);
+            ImGui.PushStyleVar(2, 10.f, 5f); //spacing between side of window and checkbox
+            ImGui.PushStyleVar(3, 10.f, 5f);
+            ImGui.PushStyleVar(4, 10.f, 10f);
+            ImGui.PushStyleVar(5, 10.f, 5f);
+            ImGui.PushStyleVar(6, 10.f, 5f);
+            ImGui.PushStyleVar(7, 10.f, 5f);
+            ImGui.PushStyleVar(8, 10.f, 5f); //spacing between seperator and text
+            ImGui.PushStyleVar(9, 10.f, 5f);
+            ImGui.PushStyleVar(10, 10.f, 5f);
+            ImGui.PushStyleVar(11, 10.f, 5f); // button sizes
+            ImGui.PushStyleVar(12, 10.f, 5f);
+            ImGui.PushStyleVar(13, 10.f, 5f);
+            ImGui.PushStyleVar(14, 10.f, 5f); // spaces between options ontop such as overlays, debug etc
+            ImGui.PushStyleVar(15, 10.f, 5f); // spacing between Text/tabs and checkboxes
+            ImGui.PushStyleVar(16, 10.f, 5f);
+            ImGui.PushStyleVar(17, 10.f, 5f);
+                if (isScriptRunning) {
+                    if (ImGui.Button("Stop Script")) {
+                        script.stopScript();
+                        isScriptRunning = false;
+                    }
+                } else {
+                    if (ImGui.Button("Start Script")) {
+                        script.startScript();
+                        isScriptRunning = true;
+                    }
+                }
+            ImGui.SameLine();
+            if (ImGui.Button("Save Settings")) {
+                try {
+                    script.saveConfiguration();
+                    saveSettingsFeedbackMessage = "Settings saved successfully.";
+                } catch (Exception e) {
+                    saveSettingsFeedbackMessage = "Failed to save settings: " + e.getMessage();
+                }
+            }
+
+            if (!saveSettingsFeedbackMessage.isEmpty()) {
+                ImGui.Text(saveSettingsFeedbackMessage);
+            }
+                script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
+                script.useBank = ImGui.Checkbox("Use Bank", script.useBank);
                     /*if(!script.useMaxGuild && !script.usePontifexRing)
                     {
                         script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
@@ -67,13 +117,29 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                     script.useDarkness = ImGui.Checkbox("Use Darkness", script.useDarkness);
                     script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
                     script.usePrayerOrRestorePots = ImGui.Checkbox("Use Prayer Potions", script.usePrayerOrRestorePots);*/
-                    script.useDeflectMagic = ImGui.Checkbox("Use Deflect Magic", script.useDeflectMagic);
-                    /*script.useSorrow = ImGui.Checkbox("Use Sorrow", script.useSorrow);*/
-                    script.useRuination = ImGui.Checkbox("Use Ruination", script.useRuination);
-                    script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
-                    script.useWeaponPoison = ImGui.Checkbox("Use Weapon Poison", script.useWeaponPoison);
-                    script.useInvokeDeath = ImGui.Checkbox("Use Invoke Death", script.useInvokeDeath);
-                    ImGui.Text("My scripts state is: " + script.getBotState());
+                script.useDeflectMagic = ImGui.Checkbox("Use Deflect Magic", script.useDeflectMagic);
+                /*script.useSorrow = ImGui.Checkbox("Use Sorrow", script.useSorrow);*/
+                script.useRuination = ImGui.Checkbox("Use Ruination", script.useRuination);
+                script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
+                script.useWeaponPoison = ImGui.Checkbox("Use Weapon Poison", script.useWeaponPoison);
+                script.useInvokeDeath = ImGui.Checkbox("Use Invoke Death", script.useInvokeDeath);
+                script.usePrayer = ImGui.Checkbox("Use Prayer Potions", script.usePrayer);
+                script.useEssenceOfFinality = ImGui.Checkbox("Use Essence of Finality", script.useEssenceOfFinality);
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("Do not have Finger of Death in Revo bar.");
+                }
+                ImGui.SetItemWidth(110.0F);
+                ImGui.SameLine();
+                MainScript.NecrosisStacksThreshold = ImGui.InputInt("Necrosis Stacks Threshold (0-12)", MainScript.NecrosisStacksThreshold);
+                if (ImGui.IsItemHovered()) {
+                    ImGui.SetTooltip("Stacks to cast at");
+                }
+                if (MainScript.NecrosisStacksThreshold < 0) {
+                    MainScript.NecrosisStacksThreshold = 0;
+                } else if (MainScript.NecrosisStacksThreshold > 12) {
+                    MainScript.NecrosisStacksThreshold = 12;
+                }
+                ImGui.Text("My scripts state is: " + script.getBotState());
                     /*if(ImGui.Button("Set State past portal (DEBUG)"))
                     {
                         script.setBotState(MainScript.BotState.ATED4);
@@ -82,25 +148,16 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                     {
                         script.setBotState(MainScript.BotState.IDLE);
                     }*/
-                    ImGui.SeparatorText("Quick Stats");
-                    updateAndDisplayDungTokens(script);
-                    ImGui.PopStyleVar(3);
-                    ImGui.EndTabItem();
-                }
-                if (ImGui.BeginTabItem("Statistics", ImGuiWindowFlag.None.getValue())) {
+                ImGui.SeparatorText("Quick Stats");
+                updateAndDisplayDungTokens(script);
+                ImGui.PopStyleVar(3);
 
-                    ImGui.Text("Total tokens: " + script.totalTokens);
-                    ImGui.Text("Total runs: " + script.runCount);
-                    ImGui.Text("Time running: " + timeRunningFormatted());
-                    ImGui.EndTabItem();
-                }
-                ImGui.EndTabBar();
             }
-            ImGui.PopStyleColor(100);
-            ImGui.End();
-        }
 
-    }
+        ImGui.PopStyleColor(100);
+        ImGui.PopStyleVar(100);
+        ImGui.End();
+        }
 
     private String timeRunningFormatted() {
         long timeRunning = System.currentTimeMillis() - script.runStartTime;
