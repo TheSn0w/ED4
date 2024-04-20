@@ -87,7 +87,14 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                 ImGui.Text(saveSettingsFeedbackMessage);
             }
                 script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Have on action bar.");
+            }
+            ImGui.SameLine();
                 script.useBank = ImGui.Checkbox("Use Bank", script.useBank);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("will not use bank but rely on the pots in your backpack, can disable as WILL BANK when out of pots.");
+            }
                     /*if(!script.useMaxGuild && !script.usePontifexRing)
                     {
                         script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
@@ -118,12 +125,50 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                     script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
                     script.usePrayerOrRestorePots = ImGui.Checkbox("Use Prayer Potions", script.usePrayerOrRestorePots);*/
                 script.useDeflectMagic = ImGui.Checkbox("Use Deflect Magic", script.useDeflectMagic);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Have on action bar.");
+            }
+            ImGui.SameLine();
                 /*script.useSorrow = ImGui.Checkbox("Use Sorrow", script.useSorrow);*/
                 script.useRuination = ImGui.Checkbox("Use Ruination", script.useRuination);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Have on action bar.");
+            }
                 script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
-                script.useWeaponPoison = ImGui.Checkbox("Use Weapon Poison", script.useWeaponPoison);
-                script.useInvokeDeath = ImGui.Checkbox("Use Invoke Death", script.useInvokeDeath);
-                script.usePrayer = ImGui.Checkbox("Use Prayer Potions", script.usePrayer);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Must be in Backpack and interface must be open.");
+            }
+            ImGui.SameLine();
+            script.usePrayer = ImGui.Checkbox("Use Prayer Potions", script.usePrayer);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Will disable the use of Altar, and only rely on pots.");
+            }
+            script.useQuickPrayers = ImGui.Checkbox("Use Quick Prayers 1", script.useQuickPrayers);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Must have on action bar.");
+            }
+            script.useInvokeDeath = ImGui.Checkbox("Use Invoke Death", script.useInvokeDeath);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Must have on action bar and sufficient runes.");
+            }
+            ImGui.SameLine();
+            script.useSmokeCloud = ImGui.Checkbox("Use Smoke Cloud", script.useSmokeCloud);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Must have on action bar and sufficient runes.");
+            }
+            script.useWen = ImGui.Checkbox("Wen Book", script.useWen);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Must have equipment interface OPEN.");
+            }
+            ImGui.SameLine();
+            script.useJas = ImGui.Checkbox("Jas Book", script.useJas);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Must have equipment interface OPEN.");
+            }
+            script.useFamiliar = ImGui.Checkbox("Use Familiar", script.useFamiliar);
+            if (ImGui.IsItemHovered()) {
+                ImGui.SetTooltip("Either be using Altar, or be using RESTORE pots, have in backpack, supports scrolls.");
+            }
                 script.useEssenceOfFinality = ImGui.Checkbox("Use Essence of Finality", script.useEssenceOfFinality);
                 if (ImGui.IsItemHovered()) {
                     ImGui.SetTooltip("Do not have Finger of Death in Revo bar.");

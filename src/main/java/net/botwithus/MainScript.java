@@ -2,8 +2,10 @@ package net.botwithus;
 
 import net.botwithus.api.game.hud.Dialog;
 import net.botwithus.api.game.hud.inventories.Backpack;
+import net.botwithus.api.game.hud.inventories.Equipment;
 import net.botwithus.rs3.game.*;
 import net.botwithus.rs3.game.hud.interfaces.Component;
+import net.botwithus.rs3.game.hud.interfaces.Interfaces;
 import net.botwithus.rs3.game.js5.types.vars.VarDomainType;
 import net.botwithus.rs3.game.movement.Movement;
 import net.botwithus.rs3.game.queries.builders.components.ComponentQuery;
@@ -29,6 +31,7 @@ import net.botwithus.rs3.util.Regex;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,18 +53,24 @@ public class MainScript extends LoopingScript {
     private boolean scriptRunning = false;
     long runStartTime;
     private Instant scriptStartTime;
+    boolean useQuickPrayers;
 
     int runCount = 0;
     int totalTokens = 0;
     boolean useWarsRetreat = true;
-    public boolean useDarkness;
+    boolean useDarkness;
     boolean useOverload;
     boolean useInvokeDeath;
-    public boolean useDeflectMagic;
-    public boolean useSorrow;
-    public boolean useWeaponPoison;
-    public boolean useBank;
-    public boolean useRuination;
+    boolean useDeflectMagic;
+    boolean useSorrow;
+    boolean useBank;
+    boolean useRuination;
+    boolean vulnBombUsed = false;  // Class level variable to track usage
+    boolean smokeCloudUsed = false;
+    boolean useSmokeCloud;
+    boolean useFamiliar;
+    boolean useWen;
+    boolean useJas;
 
     public int getCurrentDungTokens() {
         return VarManager.getVarValue(VarDomainType.PLAYER, 1097);
@@ -69,7 +78,7 @@ public class MainScript extends LoopingScript {
 
 
     enum BotState {
-        WALKTOPORTAL, PRAYING, BANKING, INTERACT_WITH_ZAMMY, WALKTOZAMMY, MOVE_TO_CEBERUS, ACCEPT_DIALOG, FirstWalk, IDLE
+        WALKTOPORTAL, PRAYING, BANKING, INTERACT_WITH_ZAMMY, WALKTOZAMMY, MOVE_TO_CEBERUS, ATTACK_CEBERUS,  ACCEPT_DIALOG, FirstWalk, IDLE
     }
 
     public MainScript(String s, ScriptConfig scriptConfig, ScriptDefinition scriptDefinition) {
@@ -113,66 +122,74 @@ public class MainScript extends LoopingScript {
         }
         switch (botState) {
             case IDLE -> {
-                if (VarManager.getVarbitValue(16768) == 1 && useDeflectMagic) {
+                if (VarManager.getVarbitValue(16768) == 1) {
                     ActionBar.usePrayer("Deflect Magic");
                     println("Deactivated Deflect Magic prayer.");
                     Execution.delay(RandomGenerator.nextInt(100, 500));
                 }
-                if (VarManager.getVarbitValue(53280) == 1 && useRuination) {
+                if (VarManager.getVarbitValue(53280) == 1) {
                     ActionBar.usePrayer("Ruination");
                     println("Deactivated Ruination.");
                     Execution.delay(RandomGenerator.nextInt(100, 500));
                 }
-                if (useMaxGuild) {
-                    useMaxGuildTeleport();
-                } else if (useWarsRetreat || usePontifexRing) {
+                if (useWarsRetreat) {
                     useWarsTeleport();
+                }
+                vulnBombUsed = false;
+                smokeCloudUsed = false;
+                quickPrayersActive = false;
+                if (useQuickPrayers) {
+                    manageQuickPrayers(false);
                 }
             }
             case BANKING -> {
-                if (useMaxGuild) {
-                    LoadMaxGuildPresetLogic();
-                } else if (useWarsRetreat || usePontifexRing) {
-                    if (useBank)
+                if (useBank)
+                    LoadPresetLogic();
+                if (!usePrayer)
+                    botState = BotState.PRAYING;
+                else {
+                    ResultSet<Item> restore = InventoryItemQuery.newQuery(93).results();
+
+                    Item prayerOrRestorePot = restore.stream()
+                            .filter(item -> item.getName() != null &&
+                                    (item.getName().toLowerCase().contains("prayer") ||
+                                            item.getName().toLowerCase().contains("restore")))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (prayerOrRestorePot == null) {
+                        println("No Prayer or Restore pots found, interacting with bank chest.");
                         LoadPresetLogic();
-                    if (!usePrayer)
-                        botState = BotState.PRAYING;
-                    else {
-                        ResultSet<Item> items = InventoryItemQuery.newQuery(93).results();
-
-                        Item prayerOrRestorePot = items.stream()
-                                .filter(item -> item.getName() != null &&
-                                        (item.getName().toLowerCase().contains("prayer") ||
-                                                item.getName().toLowerCase().contains("restore")))
-                                .findFirst()
-                                .orElse(null);
-
-                        if (prayerOrRestorePot == null) {
-                            println("No Prayer or Restore pots found, interacting with bank chest.");
-                            LoadPresetLogic();
-                        } else {
-                            botState = BotState.WALKTOPORTAL;
-                        }
+                    } else {
+                        botState = BotState.WALKTOPORTAL;
                     }
-                } else {
-                    botState = BotState.IDLE;
+                }
+                if (useFamiliar) {
+                    ResultSet<Item> pouch = InventoryItemQuery.newQuery(93).results();
+
+                    Item itemToSummon = pouch.stream()
+                            .filter(item -> item.getName() != null &&
+                                    (item.getName().toLowerCase().contains("pouch") ||
+                                            item.getName().toLowerCase().contains("contract")) &&
+                                    !item.getName().toLowerCase().contains("rune"))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (itemToSummon == null) {
+                        ;
+                        LoadPresetLogic();
+                    }
                 }
             }
 
             case PRAYING -> {
-                if (useMaxGuild) {
-                    admireThroneofFame();
-                } else if (useWarsRetreat || usePontifexRing) {
+                if (useWarsRetreat) {
                     useAltarofWar();
                 }
             }
             case WALKTOPORTAL -> {
-                if (useMaxGuild) {
-                    walkToPortalMaxGuild();
-                } else if (useWarsRetreat) {
+                if (useWarsRetreat) {
                     walkToPortal();
-                } else if (usePontifexRing) {
-                    usePontifex();
                 }
             }
             case WALKTOZAMMY -> {
@@ -188,6 +205,9 @@ public class MainScript extends LoopingScript {
                 FirstWalk();
             }
             case MOVE_TO_CEBERUS -> {
+                Movetominiboss();
+            }
+            case ATTACK_CEBERUS -> {
                 attackMiniBoss();
             }
 
@@ -210,21 +230,25 @@ public class MainScript extends LoopingScript {
 
             boolean surgedAtCorrectLocation = Execution.delayUntil(15000, () -> {
                 Coordinate playerCoord = getLocalPlayer().getCoordinate();
-                if (playerCoord.getX() <= 3295 && playerCoord.getY() <= 10134) {
-                    Execution.delay(RandomGenerator.nextInt(600, 1500));
-                    ScriptConsole.println("Used Surge: " + ActionBar.useAbility("Surge"));
-                    return true;
+                if (playerCoord.getX() >= 3292 && playerCoord.getX() <= 3296 &&
+                        playerCoord.getY() >= 10135 && playerCoord.getY() <= 10137) {
+                    if (Math.random() <= 0.70) {
+                        Execution.delay(RandomGenerator.nextInt(302, 589));
+                        ScriptConsole.println("Used Surge: " + ActionBar.useAbility("Surge"));
+                        return true;
+                    }
+                    return false;
                 }
                 return false;
             });
 
             if (!surgedAtCorrectLocation) {
-                println("Failed to surge to correct location.");
+                println("Failed to surge to correct location or opted not to surge.");
                 return;
             }
 
-            Execution.delay(RandomGenerator.nextInt(200, 400));
-            Portal.interact("Enter");
+            Execution.delay(RandomGenerator.nextInt(400, 600));
+            success = Portal.interact("Enter");
             println("Interacted with portal: " + success);
             if (!success) {
                 println("Failed to interact with portal.");
@@ -236,9 +260,11 @@ public class MainScript extends LoopingScript {
                 botState = BotState.INTERACT_WITH_ZAMMY;
             } else {
                 println("Failed to move to the new region after entering portal.");
+                botState = BotState.IDLE;
             }
         }
     }
+
 
     private void walkToPortalMaxGuild() {
         if (getLocalPlayer() != null) {
@@ -254,12 +280,13 @@ public class MainScript extends LoopingScript {
     }
 
     public void enterZammy() {
-        if (getLocalPlayer() != null) {
-            if (!getLocalPlayer().isMoving()) {
-                EntityResultSet<SceneObject> sceneObjectQuery = SceneObjectQuery.newQuery().name("The Zamorakian Undercity").results();
-                if (!sceneObjectQuery.isEmpty()) {
-                    SceneObject portal = sceneObjectQuery.nearest();
-                    portal.interact("Enter");
+        if (getLocalPlayer() != null && !getLocalPlayer().isMoving()) {
+            EntityResultSet<SceneObject> sceneObjectQuery = SceneObjectQuery.newQuery().name("The Zamorakian Undercity").results();
+            if (!sceneObjectQuery.isEmpty()) {
+                SceneObject portal = sceneObjectQuery.nearest();
+                boolean interacted = portal.interact("Enter"); // Perform the interaction
+                println("Interacted with portal: " + interacted); // Log the result
+                if (interacted && Dialog.isOpen()) { // Check interaction success and dialog opening
                     botState = BotState.ACCEPT_DIALOG;
                 }
             }
@@ -298,7 +325,11 @@ public class MainScript extends LoopingScript {
         // After attempting to replenish prayer points or if they're already at maximum
         if (getLocalPlayer().getPrayerPoints() >= Skills.PRAYER.getActualLevel()) {
             println("Prayer points are at or above maximum, moving to next state.");
-            botState = BotState.WALKTOPORTAL;
+            if (useFamiliar) {
+                manageFamiliarSummoning();
+            } else {
+                botState = BotState.WALKTOPORTAL;
+            }
         } else {
             println("Failed to replenish prayer points to maximum.");
         }
@@ -312,8 +343,118 @@ public class MainScript extends LoopingScript {
             SceneObject bankChest = query.nearest();
             bankChest.interact("Load Last Preset from");
             Execution.delay(RandomGenerator.nextInt(4500, 5000));
-            botState = BotState.PRAYING;
+            if (!usePrayer)
+                botState = BotState.PRAYING;
+            else
+                if (useFamiliar)
+                    manageFamiliarSummoning();
+                else
+                    botState = BotState.WALKTOPORTAL;
         }
+    }
+    public void manageFamiliarSummoning() {
+        if (!scriptRunning) {
+            return;
+        }
+        boolean isFamiliarSummoned = isFamiliarSummoned();
+        int familiarTimeRemaining = VarManager.getVarbitValue(6055);
+
+        if (isFamiliarSummoned) {
+            familiarTimeRemaining = VarManager.getVarbitValue(6055);
+            println("Familiar time remaining: " + familiarTimeRemaining + " Minutes");
+        }
+
+
+        if (!isFamiliarSummoned || familiarTimeRemaining <= 5) {
+            summonFamiliar();
+        } else {
+            int scrollsStored = getScrollsStored();
+            boolean hasScrolls = hasScrollsInInventory();
+            println("Backpack contains Scrolls: " + hasScrolls + ", Scrolls stored in Familiar: " + scrollsStored);
+
+            if (scrollsStored <= 50 && hasScrolls) {
+                println("Handling inventory scrolls...");
+                handleInventoryScrolls();
+            } else {
+                botState = BotState.WALKTOPORTAL;
+            }
+        }
+    }
+
+
+    private void handleInventoryScrolls() {
+        if (hasScrollsInInventory()) {
+            storeMaxScrolls();
+        } else {
+            println("No scrolls found in inventory.");
+            botState = BotState.WALKTOPORTAL;
+        }
+    }
+
+    private boolean hasScrollsInInventory() {
+        ResultSet<Item> scrolls = InventoryItemQuery.newQuery(93).results();
+        return scrolls.stream().anyMatch(item -> item.getName() != null && item.getName().toLowerCase().contains("scroll"));
+    }
+
+    private int getScrollsStored() {
+        return VarManager.getVarbitValue(25412);
+    }
+
+    private void summonFamiliar() {
+        if (!scriptRunning) {
+            return;
+        }
+        ResultSet<Item> items = InventoryItemQuery.newQuery(93).results();
+
+        Item itemToSummon = items.stream()
+                .filter(item -> item.getName() != null &&
+                        (item.getName().toLowerCase().contains("pouch") ||
+                                item.getName().toLowerCase().contains("contract")) &&
+                        !item.getName().toLowerCase().contains("rune"))  // Excluding items containing "rune"
+                .findFirst()
+                .orElse(null);
+
+        if (itemToSummon != null) {
+            println("Attempting to summon with: " + itemToSummon.getName());
+            boolean success = Backpack.interact(itemToSummon.getName(), "Summon");
+            Execution.delay(RandomGenerator.nextInt(1600, 2100));
+
+            if (success) {
+                println("Summoned familiar with: " + itemToSummon.getName());
+                boolean familiarSummoned = Execution.delayUntil(10000, this::isFamiliarSummoned);
+                if (familiarSummoned) {
+                    println(itemToSummon.getName() + " is now summoned.");
+                    manageFamiliarSummoning();
+                } else {
+                    println("Failed to confirm the summoning of familiar with " + itemToSummon.getName() + ".");
+                    LoadPresetLogic();
+                }
+            } else {
+                println("Failed to summon familiar with: " + itemToSummon.getName());
+                LoadPresetLogic();
+            }
+        } else {
+            println("No suitable 'pouch' or 'contract' items for summoning found in Backpack.");
+            botState = BotState.WALKTOPORTAL;
+        }
+    }
+
+    private void storeMaxScrolls() {
+        println("Attempting to store scrolls in familiar.");
+        boolean success = Objects.requireNonNull(ComponentQuery.newQuery(662).componentIndex(78).results().first()).interact(1);
+        Execution.delay(RandomGenerator.nextInt(800, 1000));
+        if (success) {
+            println("Successfully stored scrolls in familiar.");
+            botState = BotState.WALKTOPORTAL;
+        } else {
+            println("Failed to store scrolls in familiar.");
+            botState = BotState.IDLE;
+        }
+    }
+
+    private boolean isFamiliarSummoned() {
+        Component familiarComponent = ComponentQuery.newQuery(284).spriteId(26095).results().first();
+        return familiarComponent != null;
     }
 
 
@@ -346,7 +487,6 @@ public class MainScript extends LoopingScript {
     }
 
     private void LoadMaxGuildPresetLogic() {
-
         if (WalkTo(2276, 3311)) {
             if (isAtMaxGuildBank()) {
                 EntityResultSet<Npc> query = NpcQuery.newQuery().name("Banker").results();
@@ -439,16 +579,26 @@ public class MainScript extends LoopingScript {
         }
     }
 
-    public void attackMiniBoss() {
+    public void Movetominiboss() {
         if (getLocalPlayer() != null) {
-
+            Coordinate startCoordinate = getLocalPlayer().getCoordinate();
             Coordinate targetCoordinate = new Coordinate(
-                    getLocalPlayer().getCoordinate().getX() + 30,
-                    getLocalPlayer().getCoordinate().getY() + 40,
-                    getLocalPlayer().getCoordinate().getZ()
+                    startCoordinate.getX() + 30,
+                    startCoordinate.getY() + 40,
+                    startCoordinate.getZ()
             );
+
             if (usePrayer) {
                 usePrayerOrRestorePots();
+            }
+            if (useWen) {
+                activateScriptureOfWen();
+            }
+            if (useJas) {
+                activateScriptureOfJas();
+            }
+            if (useQuickPrayers) {
+                manageQuickPrayers(true); // Pass the boolean directly
             }
 
             if (VarManager.getVarbitValue(16768) == 0 && useDeflectMagic) {
@@ -457,66 +607,130 @@ public class MainScript extends LoopingScript {
                 Execution.delay(RandomGenerator.nextInt(100, 500));
             }
 
-
             println("Moving towards the target coordinates.");
             Movement.walkTo(targetCoordinate.getX(), targetCoordinate.getY(), false);
-            boolean reached = Execution.delayUntil(30000, () -> Distance.between(getLocalPlayer().getCoordinate(), targetCoordinate) <= 1);
+
+            boolean[] surgeUsed = new boolean[2]; // 0 for firstSurgeUsed, 1 for secondSurgeUsed
+
+            boolean reached = Execution.delayUntil(30000, () -> {
+                Coordinate currentPlayerPosition = getLocalPlayer().getCoordinate();
+
+                // First Surge Attempt
+                if (!surgeUsed[0] && getLocalPlayer().isMoving() &&
+                        currentPlayerPosition.getY() <= startCoordinate.getY() + 5 &&
+                        ActionBar.getCooldownPrecise("Surge") == 0) {
+                    if (Math.random() <= 0.85) {
+                        Execution.delay(RandomGenerator.nextInt(600, 1750));
+                        println("Used Surge: " + ActionBar.useAbility("Surge"));
+                        Execution.delay(200);
+                        Movement.walkTo(targetCoordinate.getX(), targetCoordinate.getY(), false);
+                        surgeUsed[0] = true;
+                    } else {
+                        println("Chose not to Surge the first time.");
+                        surgeUsed[0] = true; // Mark the surge as "used" to avoid retrying
+                    }
+                }
+
+                // Second Surge Attempt
+                if (!surgeUsed[1] && getLocalPlayer().isMoving() &&
+                        currentPlayerPosition.getX() >= startCoordinate.getX() + 9 &&
+                        currentPlayerPosition.getY() >= startCoordinate.getY() + 28 &&
+                        ActionBar.getCooldownPrecise("Surge") == 0) {
+                    if (Math.random() <= 0.85) {
+                        Execution.delay(RandomGenerator.nextInt(250, 600));
+                        println("Used Surge: " + ActionBar.useAbility("Surge"));
+                        Execution.delay(200);
+                        Movement.walkTo(targetCoordinate.getX(), targetCoordinate.getY(), false);
+                        surgeUsed[1] = true;
+                    } else {
+                        println("Chose not to Surge the second time.");
+                        surgeUsed[1] = true; // Mark the surge as "used" to avoid retrying
+                    }
+                }
+
+                return Distance.between(currentPlayerPosition, targetCoordinate) <= 1;
+            });
+
+
 
             if (reached) {
-                println("Reached target coordinates.");
+                println("Reached Destination.");
                 if (VarManager.getVarbitValue(53280) == 0 && useRuination) {
-                    ActionBar.usePrayer("Ruination");
-                    println("Activated Ruination.");
+                    println("Activated Ruination: " + ActionBar.useAbility("Ruination"));
                     Execution.delay(RandomGenerator.nextInt(100, 500));
                 }
-
-                EntityResultSet<Npc> npcQuery = NpcQuery.newQuery().name("Cerberus Juvenile").results();
-                if (!npcQuery.isEmpty()) {
-                    println("Cerberus Juvenile found, attempting to attack.");
-                    Npc boss = npcQuery.nearest();
-                    if (boss != null && boss.interact("Attack")) {
-                        println("Attacked Cerberus Juvenile, now invoking death.");
-                        if (useInvokeDeath) {
-                            useInvokeDeath();
-                        }
-                        if (useOverload) {
-                            drinkOverloads();
-                        }
-                        if (useWeaponPoison) {
-                            useWeaponPoison();
-                        }
-                        while (true) {
-                            // Check if prayer or essence of finality needs to be used
-                            if (usePrayer) {
-                                usePrayerOrRestorePots();
-                            }
-                            if (useEssenceOfFinality) {
-                                essenceOfFinality();
-                            }
-
-                            // Check if the NPCs are no longer present
-                            boolean noNpcsLeft = Execution.delayUntil(1000, () -> { // Check every 10 seconds
-                                EntityResultSet<Npc> currentQuery = NpcQuery.newQuery().name("Cerberus Juvenile").results();
-                                return currentQuery.isEmpty();
-                            });
-
-                            // If no NPCs are left, break the loop
-                            if (noNpcsLeft) {
-                                break;
-                            }
-                        }
-                        println("Assuming Cerberus Juvenile is defeated.");
-                        botState = BotState.IDLE;
-                    } else {
-                        println("Failed to interact with Cerberus Juvenile.");
-                    }
-                } else {
-                    println("No Cerberus Juvenile found.");
-                }
-                println("Run completed.");
-            } else {
-                println("Failed to reach the target coordinates within the time limit.");
+                botState = BotState.ATTACK_CEBERUS;
             }
+        }
+    }
+    private void attackMiniBoss() {
+        if (getLocalPlayer() != null) {
+            EntityResultSet<Npc> npcQuery = NpcQuery.newQuery().name("Cerberus Juvenile").results();
+            if (!npcQuery.isEmpty()) {
+                println("Cerberus Juvenile found, attempting to attack.");
+                Npc boss = npcQuery.nearest();
+                if (boss != null) {
+                    println("Attacked Cerberus Juvenile: " + boss.interact("Attack"));
+                    if (useInvokeDeath) {
+                        useInvokeDeath();
+                    }
+                    if (useOverload) {
+                        drinkOverloads();
+                    }
+                    while (true) {
+                        // Check if prayer or essence of finality needs to be used
+                        if (usePrayer) {
+                            usePrayerOrRestorePots();
+                        }
+                        if (useEssenceOfFinality) {
+                            essenceOfFinality();
+                        }
+                        if (Backpack.contains("Vulnerability bomb")) {
+                            useVulnBomb();
+                        }
+                        if (useSmokeCloud) {
+                            CastSmokeCloud();
+                        }
+
+                        // Check if the NPCs are no longer present
+                        boolean noNpcsLeft = Execution.delayUntil(1000, () -> {
+                            EntityResultSet<Npc> currentQuery = NpcQuery.newQuery().name("Cerberus Juvenile").results();
+                            return currentQuery.nearest().getCurrentHealth() == 0;
+                        });
+
+                        // If no NPCs are left, break the loop
+                        if (noNpcsLeft) {
+                            break;
+                        }
+                    }
+                    println("Assuming Cerberus Juvenile is defeated.");
+                    botState = BotState.IDLE;
+                } else {
+                    println("Failed to interact with Cerberus Juvenile.");
+                }
+            } else {
+                println("No Cerberus Juvenile found.");
+            }
+            println("Run completed.");
+        } else {
+            println("Failed to reach the target coordinates within the time limit.");
+        }
+    }
+
+    private void useVulnBomb() {
+        int vulnDebuffVarbit = VarManager.getVarbitValue(1939);
+        if (vulnDebuffVarbit == 0 && !vulnBombUsed) {
+            ActionBar.useItem("Vulnerability bomb", "Throw");
+            vulnBombUsed = true;
+            Execution.delay(RandomGenerator.nextInt(800, 1000));
+            println("Vulnerability bomb used.");
+        }
+    }
+    private void CastSmokeCloud() {
+        int debuffVarbit = VarManager.getVarbitValue(49448);
+        if (debuffVarbit == 0 && !smokeCloudUsed) {
+            println("Used Smoke Cloud: " + ActionBar.useAbility("Smoke Cloud"));
+            smokeCloudUsed = true;
         }
     }
 
@@ -525,34 +739,6 @@ public class MainScript extends LoopingScript {
             if (VarManager.getVarbitValue(53247) == 0) {
                 println("Used Invoke: " + ActionBar.useAbility("Invoke Death"));
                 Execution.delayUntil(RandomGenerator.nextInt(2400, 3000), () -> VarManager.getVarbitValue(53247) == 0);
-            }
-        }
-    }
-
-    public void useWeaponPoison() {
-        Player localPlayer = getLocalPlayer();
-        if (localPlayer != null) {
-            if (VarManager.getVarbitValue(2102) <= 3 && getLocalPlayer().getAnimationId() != 18068) { // 2102 = time remaining 18068, animation ID for drinking / 45317 = 4 on weapon poison+++
-                ResultSet<Item> items = InventoryItemQuery.newQuery().results();
-                Pattern poisonPattern = Pattern.compile("weapon poison\\+*?", Pattern.CASE_INSENSITIVE);
-
-                Item weaponPoisonItem = items.stream()
-                        .filter(item -> {
-                            if (item.getName() == null) return false;
-                            Matcher matcher = poisonPattern.matcher(item.getName());
-                            return matcher.find();
-                        })
-                        .findFirst()
-                        .orElse(null);
-
-                if (weaponPoisonItem != null) {
-                    println("Applying " + weaponPoisonItem.getName() + " ID: " + weaponPoisonItem.getId());
-                    Execution.delay(RandomGenerator.nextInt(600, 1500));
-                    Backpack.interact(weaponPoisonItem.getName(), "Apply");
-                    println(weaponPoisonItem.getName() + "Has been applied");
-                    Execution.delay(RandomGenerator.nextInt(600, 700));
-
-                }
             }
         }
     }
@@ -593,32 +779,103 @@ public class MainScript extends LoopingScript {
             }
         }
     }
+    private boolean quickPrayersActive = false;
+
+    public void manageQuickPrayers(boolean activate) {
+        if (getLocalPlayer() == null) {
+            return;
+        }
+        updateQuickPrayersActivation(activate);
+    }
+
+    private void updateQuickPrayersActivation(boolean activate) {
+        boolean isCurrentlyActive = isQuickPrayersActive();
+
+        if (activate && !isCurrentlyActive) {
+            activateQuickPrayers();
+        } else if (!activate && isCurrentlyActive) {
+            deactivateQuickPrayers();
+        }
+    }
+
+    private void activateQuickPrayers() {
+        if (!quickPrayersActive) {
+            println("Activating Quick Prayers.");
+            if (ActionBar.useAbility("Quick-prayers 1")) {
+                println("Quick Prayers activated successfully.");
+                quickPrayersActive = true;
+            } else {
+                println("Failed to activate Quick Prayers.");
+            }
+        }
+    }
+
+    private void deactivateQuickPrayers() {
+        if (quickPrayersActive) {
+            println("Deactivating Quick Prayers.");
+            if (ActionBar.useAbility("Quick-prayers 1")) {
+                println("Quick Prayers deactivated.");
+                quickPrayersActive = false;
+            } else {
+                println("Failed to deactivate Quick Prayers.");
+            }
+        }
+    }
+
+    private boolean isQuickPrayersActive() {
+        int[] varbitIds = {
+                // Curses
+                16761, 16762, 16763, 16786, 16764, 16765, 16787, 16788, 16765, 16766,
+                16767, 16768, 16769, 16770, 16771, 16772, 16781, 16773, 16782, 16774,
+                16775, 16776, 16777, 16778, 16779, 16780, 16784, 16783, 29065, 29066,
+                29067, 29068, 29069, 49330, 29071, 34866, 34867, 34868, 53275, 53276,
+                53277, 53278, 53279, 53280, 53281,
+                // Normal
+                16739, 16740, 16741, 16742, 16743, 16744, 16745, 16746, 16747, 16748,
+                16749, 16750, 16751, 16752, 16753, 16754, 16755, 16756, 16757, 16758,
+                16759, 16760, 53271, 53272, 53273, 53274
+        };
+
+        for (int varbitId : varbitIds) {
+            if (VarManager.getVarbitValue(varbitId) == 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     private void acceptDialog() {
-        if (Dialog.isOpen()) {
-            Dialog.getOptions().forEach(option -> {
-                /*println(option);*/
-                if (option == null)
-                    return;
+        if (getLocalPlayer() != null) {
+            if (Dialog.isOpen()) {
+                Dialog.getOptions().forEach(option -> {
+                    /*println(option);*/
+                    if (option == null)
+                        return;
 
-                if (option.contains("No")) {
-                    Execution.delay(RandomGenerator.nextInt(200, 300));
-                    Dialog.interact(option);
-                    println("Accepting first dialog");
-                }
+                    if (option.contains("No")) {
+                        Execution.delay(RandomGenerator.nextInt(600, 800));
+                        Dialog.interact(option);
+                        println("Accepting first dialog");
+                    }
 
 
-                if (option.contains("Normal mode")) {
-                    Execution.delay(RandomGenerator.nextInt(500, 550));
-                    Dialog.interact(option);
-                    println("Accepting dialog!");
-                    Execution.delay(RandomGenerator.nextInt(500, 1500));
-                    botState = BotState.MOVE_TO_CEBERUS;
-                }
-            });
+                    if (option.contains("Normal mode")) {
+                        Execution.delay(RandomGenerator.nextInt(600, 800));
+                        Dialog.interact(option);
+                        println("Accepting dialog!");
+                        Execution.delay(RandomGenerator.nextInt(2154, 2687));
+                            botState = BotState.MOVE_TO_CEBERUS;
+                    }
+                });
+            }
+        } else {
+            Execution.delay(RandomGenerator.nextInt(600, 2500));
+            println("dialog not open.");
+            botState = BotState.INTERACT_WITH_ZAMMY;
         }
-
     }
+
 
     public void useMaxGuildTeleport() {
         if (getLocalPlayer() != null) {
@@ -696,6 +953,36 @@ public class MainScript extends LoopingScript {
         }
     }
 
+    private void activateScriptureOfJas() {
+        if (VarManager.getVarbitValue(30605) == 0 && VarManager.getVarbitValue(30604) >= 60) {
+            Execution.delay(RandomGenerator.nextInt(600, 1500));
+            println("Activated Scripture of Jas:  " + Equipment.interact(Equipment.Slot.POCKET, "Activate/Deactivate"));
+        }
+    }
+
+
+    private void deactivateScriptureOfJas() {
+        if (VarManager.getVarbitValue(30605) == 1) {
+            Execution.delay(RandomGenerator.nextInt(600, 1500));
+            println("Deactivated Scripture of Jas:  " + Equipment.interact(Equipment.Slot.POCKET, "Activate/Deactivate"));
+        }
+    }
+
+
+    private void activateScriptureOfWen() {
+        if (VarManager.getVarbitValue(30605) == 0 && VarManager.getVarbitValue(30604) >= 60) {
+            Execution.delay(RandomGenerator.nextInt(600, 1500));
+            println("Activated Scripture of Wen:  " + Equipment.interact(Equipment.Slot.POCKET, "Activate/Deactivate"));
+        }
+    }
+
+    private void deactivateScriptureOfWen() {
+        if (VarManager.getVarbitValue(30605) == 1) {
+            Execution.delay(RandomGenerator.nextInt(600, 1500));
+            println("Deactivated Scripture of Wen:  " + Equipment.interact(Equipment.Slot.POCKET, "Activate/Deactivate"));
+        }
+    }
+
     public static int NecrosisStacksThreshold = 12;
 
     private void essenceOfFinality() {
@@ -720,7 +1007,6 @@ public class MainScript extends LoopingScript {
     }
 
     public void saveConfiguration() {
-        this.configuration.addProperty("useWeaponPoison", String.valueOf(this.useWeaponPoison));
         this.configuration.addProperty("usePrayer", String.valueOf(this.usePrayer));
         this.configuration.addProperty("useEssenceOfFinality", String.valueOf(this.useEssenceOfFinality));
         this.configuration.addProperty("useOverload", String.valueOf(this.useOverload));
@@ -733,13 +1019,17 @@ public class MainScript extends LoopingScript {
         this.configuration.addProperty("useMaxGuild", String.valueOf(this.useMaxGuild));
         this.configuration.addProperty("useWarsRetreat", String.valueOf(this.useWarsRetreat));
         this.configuration.addProperty("useBank", String.valueOf(this.useBank));
+        this.configuration.addProperty("useWen", String.valueOf(this.useWen));
+        this.configuration.addProperty("useJas", String.valueOf(this.useJas));
+        this.configuration.addProperty("UseSmokeCloud", String.valueOf(this.useSmokeCloud));
+        this.configuration.addProperty("UseFamiliar", String.valueOf(this.useFamiliar));
         this.configuration.addProperty("NecrosisStacksThreshold", String.valueOf(MainScript.NecrosisStacksThreshold));
+        this.configuration.addProperty("useQuickPrayers", String.valueOf(this.useQuickPrayers));
         this.configuration.save();
     }
 
     public void loadConfiguration() {
         try {
-            this.useWeaponPoison = Boolean.parseBoolean(this.configuration.getProperty("useWeaponPoison"));
             this.usePrayer = Boolean.parseBoolean(this.configuration.getProperty("usePrayer"));
             this.useEssenceOfFinality = Boolean.parseBoolean(this.configuration.getProperty("useEssenceOfFinality"));
             this.useOverload = Boolean.parseBoolean(this.configuration.getProperty("useOverload"));
@@ -752,6 +1042,11 @@ public class MainScript extends LoopingScript {
             this.useMaxGuild = Boolean.parseBoolean(this.configuration.getProperty("useMaxGuild"));
             this.useWarsRetreat = Boolean.parseBoolean(this.configuration.getProperty("useWarsRetreat"));
             this.useBank = Boolean.parseBoolean(this.configuration.getProperty("useBank"));
+            this.useWen = Boolean.parseBoolean(this.configuration.getProperty("useWen"));
+            this.useJas = Boolean.parseBoolean(this.configuration.getProperty("useJas"));
+            this.useSmokeCloud = Boolean.parseBoolean(this.configuration.getProperty("UseSmokeCloud"));
+            this.useFamiliar = Boolean.parseBoolean(this.configuration.getProperty("UseFamiliar"));
+            this.useQuickPrayers = Boolean.parseBoolean(this.configuration.getProperty("useQuickPrayers"));
             this.useEssenceOfFinality = Boolean.parseBoolean(this.configuration.getProperty("useEssenceOfFinality"));
             String necrosisThresholdValue = this.configuration.getProperty("NecrosisStacksThreshold");
             if (necrosisThresholdValue != null && !necrosisThresholdValue.isEmpty()) {
