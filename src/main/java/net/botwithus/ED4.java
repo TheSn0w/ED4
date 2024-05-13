@@ -5,9 +5,10 @@ import net.botwithus.api.game.hud.inventories.Backpack;
 import net.botwithus.api.game.hud.inventories.Equipment;
 import net.botwithus.rs3.game.*;
 import net.botwithus.rs3.game.hud.interfaces.Component;
-import net.botwithus.rs3.game.hud.interfaces.Interfaces;
 import net.botwithus.rs3.game.js5.types.vars.VarDomainType;
 import net.botwithus.rs3.game.movement.Movement;
+import net.botwithus.rs3.game.movement.NavPath;
+import net.botwithus.rs3.game.movement.TraverseEvent;
 import net.botwithus.rs3.game.queries.builders.components.ComponentQuery;
 import net.botwithus.rs3.game.queries.builders.items.InventoryItemQuery;
 import net.botwithus.rs3.game.queries.results.ResultSet;
@@ -32,12 +33,11 @@ import net.botwithus.rs3.util.Regex;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static net.botwithus.rs3.game.Client.getLocalPlayer;
 
-public class MainScript extends LoopingScript {
+public class ED4 extends LoopingScript {
 
     public boolean runScript;
 
@@ -45,7 +45,6 @@ public class MainScript extends LoopingScript {
     public int CoordX;
     public int CoordY;
     private BotState botState;
-    boolean usePortal = false;
     boolean usePontifexRing = false;
     boolean useMaxGuild = false;
     boolean usePrayer;
@@ -55,8 +54,6 @@ public class MainScript extends LoopingScript {
     private Instant scriptStartTime;
     boolean useQuickPrayers;
 
-    int runCount = 0;
-    int totalTokens = 0;
     boolean useWarsRetreat = true;
     boolean useDarkness;
     boolean useOverload;
@@ -78,10 +75,10 @@ public class MainScript extends LoopingScript {
 
 
     enum BotState {
-        WALKTOPORTAL, PRAYING, BANKING, INTERACT_WITH_ZAMMY, WALKTOZAMMY, MOVE_TO_CEBERUS, ATTACK_CEBERUS,  ACCEPT_DIALOG, FirstWalk, IDLE
+        WALK_TO_ZAMMY_PORTAL, PRAYING, BANKING, INTERACT_WITH_ZAMMY, WALKTOZAMMY, MOVE_TO_CEBERUS, ATTACK_CEBERUS,  ACCEPT_DIALOG, FirstWalk, IDLE
     }
 
-    public MainScript(String s, ScriptConfig scriptConfig, ScriptDefinition scriptDefinition) {
+    public ED4(String s, ScriptConfig scriptConfig, ScriptDefinition scriptDefinition) {
         super(s, scriptConfig, scriptDefinition);
         this.sgc = new SkeletonScriptGraphicsContext(getConsole(), this);
         botState = BotState.IDLE;
@@ -134,6 +131,8 @@ public class MainScript extends LoopingScript {
                 }
                 if (useWarsRetreat) {
                     useWarsTeleport();
+                } else {
+                    useShantayPass();
                 }
                 vulnBombUsed = false;
                 smokeCloudUsed = false;
@@ -143,25 +142,29 @@ public class MainScript extends LoopingScript {
                 }
             }
             case BANKING -> {
-                if (useBank)
+                if (useBank && useWarsRetreat) {
                     LoadPresetLogic();
-                if (!usePrayer)
+                }
+                if (!usePrayer && useWarsRetreat) {
                     botState = BotState.PRAYING;
+                }
                 else {
-                    ResultSet<Item> restore = InventoryItemQuery.newQuery(93).results();
+                    if (useWarsRetreat) {
+                        ResultSet<Item> restore = InventoryItemQuery.newQuery(93).results();
 
-                    Item prayerOrRestorePot = restore.stream()
-                            .filter(item -> item.getName() != null &&
-                                    (item.getName().toLowerCase().contains("prayer") ||
-                                            item.getName().toLowerCase().contains("restore")))
-                            .findFirst()
-                            .orElse(null);
+                        Item prayerOrRestorePot = restore.stream()
+                                .filter(item -> item.getName() != null &&
+                                        (item.getName().toLowerCase().contains("prayer") ||
+                                                item.getName().toLowerCase().contains("restore")))
+                                .findFirst()
+                                .orElse(null);
 
-                    if (prayerOrRestorePot == null) {
-                        println("No Prayer or Restore pots found, interacting with bank chest.");
-                        LoadPresetLogic();
-                    } else {
-                        botState = BotState.WALKTOPORTAL;
+                        if (prayerOrRestorePot == null) {
+                            println("No Prayer or Restore pots found, interacting with bank chest.");
+                            LoadPresetLogic();
+                        } else {
+                            botState = BotState.WALK_TO_ZAMMY_PORTAL;
+                        }
                     }
                 }
                 if (useFamiliar) {
@@ -187,9 +190,12 @@ public class MainScript extends LoopingScript {
                     useAltarofWar();
                 }
             }
-            case WALKTOPORTAL -> {
+            case WALK_TO_ZAMMY_PORTAL -> {
                 if (useWarsRetreat) {
                     walkToPortal();
+                } else {
+                    walkTozammy();
+
                 }
             }
             case WALKTOZAMMY -> {
@@ -212,6 +218,25 @@ public class MainScript extends LoopingScript {
             }
 
 
+        }
+    }
+    private void walkTozammy() {
+        Coordinate zammyLocation = new Coordinate(1761, 1343, 0);
+
+        if (Movement.traverse(NavPath.resolve(zammyLocation)) == TraverseEvent.State.FINISHED) {
+            botState = BotState.INTERACT_WITH_ZAMMY;
+
+        }
+    }
+    private void useShantayPass() {
+        Coordinate taverlyBank = new Coordinate(2946, 3370, 0);
+        EntityResultSet<SceneObject> results = SceneObjectQuery.newQuery().name("Bank booth").results();
+
+        if (Movement.traverse(NavPath.resolve(taverlyBank)) == TraverseEvent.State.FINISHED) {
+                SceneObject bankChest = results.random();
+                bankChest.interact("Load Last Preset from");
+                Execution.delay(RandomGenerator.nextInt(600, 800));
+                botState = BotState.WALK_TO_ZAMMY_PORTAL;
         }
     }
 
@@ -284,8 +309,9 @@ public class MainScript extends LoopingScript {
             EntityResultSet<SceneObject> sceneObjectQuery = SceneObjectQuery.newQuery().name("The Zamorakian Undercity").results();
             if (!sceneObjectQuery.isEmpty()) {
                 SceneObject portal = sceneObjectQuery.nearest();
-                boolean interacted = portal.interact("Enter"); // Perform the interaction
-                println("Interacted with portal: " + interacted); // Log the result
+                boolean interacted = portal.interact("Enter");
+                println("Interacted with portal: " + interacted);
+                Execution.delay(RandomGenerator.nextInt(600, 800));
                 if (interacted && Dialog.isOpen()) { // Check interaction success and dialog opening
                     botState = BotState.ACCEPT_DIALOG;
                 }
@@ -328,7 +354,7 @@ public class MainScript extends LoopingScript {
             if (useFamiliar) {
                 manageFamiliarSummoning();
             } else {
-                botState = BotState.WALKTOPORTAL;
+                botState = BotState.WALK_TO_ZAMMY_PORTAL;
             }
         } else {
             println("Failed to replenish prayer points to maximum.");
@@ -349,7 +375,7 @@ public class MainScript extends LoopingScript {
                 if (useFamiliar)
                     manageFamiliarSummoning();
                 else
-                    botState = BotState.WALKTOPORTAL;
+                    botState = BotState.WALK_TO_ZAMMY_PORTAL;
         }
     }
     public void manageFamiliarSummoning() {
@@ -376,7 +402,7 @@ public class MainScript extends LoopingScript {
                 println("Handling inventory scrolls...");
                 handleInventoryScrolls();
             } else {
-                botState = BotState.WALKTOPORTAL;
+                botState = BotState.WALK_TO_ZAMMY_PORTAL;
             }
         }
     }
@@ -387,7 +413,7 @@ public class MainScript extends LoopingScript {
             storeMaxScrolls();
         } else {
             println("No scrolls found in inventory.");
-            botState = BotState.WALKTOPORTAL;
+            botState = BotState.WALK_TO_ZAMMY_PORTAL;
         }
     }
 
@@ -435,7 +461,7 @@ public class MainScript extends LoopingScript {
             }
         } else {
             println("No suitable 'pouch' or 'contract' items for summoning found in Backpack.");
-            botState = BotState.WALKTOPORTAL;
+            botState = BotState.WALK_TO_ZAMMY_PORTAL;
         }
     }
 
@@ -445,7 +471,7 @@ public class MainScript extends LoopingScript {
         Execution.delay(RandomGenerator.nextInt(800, 1000));
         if (success) {
             println("Successfully stored scrolls in familiar.");
-            botState = BotState.WALKTOPORTAL;
+            botState = BotState.WALK_TO_ZAMMY_PORTAL;
         } else {
             println("Failed to store scrolls in familiar.");
             botState = BotState.IDLE;
@@ -519,7 +545,7 @@ public class MainScript extends LoopingScript {
                 Execution.delay(RandomGenerator.nextInt(600, 1000));
 
             }
-            botState = BotState.WALKTOPORTAL;
+            botState = BotState.WALK_TO_ZAMMY_PORTAL;
         }
     }
 
@@ -704,6 +730,10 @@ public class MainScript extends LoopingScript {
                         }
                     }
                     println("Assuming Cerberus Juvenile is defeated.");
+                    if (!useWarsRetreat) {
+                        Backpack.interact("Falador teleport", "Break");
+                        Execution.delay(RandomGenerator.nextInt(2500, 3500));
+                    }
                     botState = BotState.IDLE;
                 } else {
                     println("Failed to interact with Cerberus Juvenile.");
@@ -1023,7 +1053,7 @@ public class MainScript extends LoopingScript {
         this.configuration.addProperty("useJas", String.valueOf(this.useJas));
         this.configuration.addProperty("UseSmokeCloud", String.valueOf(this.useSmokeCloud));
         this.configuration.addProperty("UseFamiliar", String.valueOf(this.useFamiliar));
-        this.configuration.addProperty("NecrosisStacksThreshold", String.valueOf(MainScript.NecrosisStacksThreshold));
+        this.configuration.addProperty("NecrosisStacksThreshold", String.valueOf(ED4.NecrosisStacksThreshold));
         this.configuration.addProperty("useQuickPrayers", String.valueOf(this.useQuickPrayers));
         this.configuration.save();
     }
@@ -1053,11 +1083,11 @@ public class MainScript extends LoopingScript {
                 int necrosisThreshold = Integer.parseInt(necrosisThresholdValue);
                 if (necrosisThreshold < 0) necrosisThreshold = 0;
                 else if (necrosisThreshold > 12) necrosisThreshold = 12;
-                MainScript.NecrosisStacksThreshold = necrosisThreshold;
+                ED4.NecrosisStacksThreshold = necrosisThreshold;
             }
         } catch (NumberFormatException e) {
             println("Error parsing threshold values. Using defaults.");
-            MainScript.NecrosisStacksThreshold = 12; // Default or a logical fallback
+            ED4.NecrosisStacksThreshold = 12; // Default or a logical fallback
         }
     }
 }

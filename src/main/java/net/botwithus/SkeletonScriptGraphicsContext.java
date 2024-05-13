@@ -7,9 +7,9 @@ import net.botwithus.rs3.script.ScriptGraphicsContext;
 
 public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
 
-    private MainScript script;
+    private ED4 script;
 
-    public SkeletonScriptGraphicsContext(ScriptConsole scriptConsole, MainScript script) {
+    public SkeletonScriptGraphicsContext(ScriptConsole scriptConsole, ED4 script) {
         super(scriptConsole);
         this.script = script;
     }
@@ -121,7 +121,6 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                 /*script.useSorrow = ImGui.Checkbox("Use Sorrow", script.useSorrow);*/
                 script.useRuination = ImGui.Checkbox("Use Ruination", script.useRuination);
                 script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
-                script.useWeaponPoison = ImGui.Checkbox("Use Weapon Poison", script.useWeaponPoison);
                 script.useInvokeDeath = ImGui.Checkbox("Use Invoke Death", script.useInvokeDeath);
                 script.usePrayer = ImGui.Checkbox("Use Prayer Potions", script.usePrayer);
                 script.useEssenceOfFinality = ImGui.Checkbox("Use Essence of Finality", script.useEssenceOfFinality);
@@ -130,14 +129,14 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                 }
                 ImGui.SetItemWidth(110.0F);
                 ImGui.SameLine();
-                MainScript.NecrosisStacksThreshold = ImGui.InputInt("Necrosis Stacks Threshold (0-12)", MainScript.NecrosisStacksThreshold);
+                ED4.NecrosisStacksThreshold = ImGui.InputInt("Necrosis Stacks Threshold (0-12)", ED4.NecrosisStacksThreshold);
                 if (ImGui.IsItemHovered()) {
                     ImGui.SetTooltip("Stacks to cast at");
                 }
-                if (MainScript.NecrosisStacksThreshold < 0) {
-                    MainScript.NecrosisStacksThreshold = 0;
-                } else if (MainScript.NecrosisStacksThreshold > 12) {
-                    MainScript.NecrosisStacksThreshold = 12;
+                if (ED4.NecrosisStacksThreshold < 0) {
+                    ED4.NecrosisStacksThreshold = 0;
+                } else if (ED4.NecrosisStacksThreshold > 12) {
+                    ED4.NecrosisStacksThreshold = 12;
                 }
                 ImGui.Text("My scripts state is: " + script.getBotState());
                     /*if(ImGui.Button("Set State past portal (DEBUG)"))
@@ -166,7 +165,7 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
         long hours = minutes / 60;
         return hours + "h " + minutes % 60 + "m " + seconds % 60 + "s";
     }
-    public void updateAndDisplayDungTokens(MainScript script) {
+    public void updateAndDisplayDungTokens(ED4 script) {
         if (startingDungTokens == -1) {
             startingDungTokens = script.getCurrentDungTokens(); // Initialize starting value
         }
