@@ -123,6 +123,7 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                 ImGui.Text("You can use `Falador tablet` from the backpack to teleport if you do not have wars portal");
                 ImGui.Text("just disable the following `wars retreat` and `use bank`");
                 ImGui.Text("if using familiar and falador, you MUST have restore potions in your inventory");
+                script.useSmokeCloud = ImGui.Checkbox("Use Smoke Cloud", script.useSmokeCloud);
                 script.useJas = ImGui.Checkbox("Use Jas Book", script.useJas);
                 script.useWen = ImGui.Checkbox("Use Wen Book", script.useWen);
                 script.useQuickPrayers = ImGui.Checkbox("Use Quick Prayers", script.useQuickPrayers);
