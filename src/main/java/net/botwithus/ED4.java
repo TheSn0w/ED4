@@ -58,16 +58,14 @@ public class ED4 extends LoopingScript {
     boolean useDarkness;
     boolean useOverload;
     boolean useInvokeDeath;
-    boolean useDeflectMagic;
-    boolean useSorrow;
     boolean useBank;
-    boolean useRuination;
     boolean vulnBombUsed = false;  // Class level variable to track usage
     boolean smokeCloudUsed = false;
     boolean useSmokeCloud;
     boolean useFamiliar;
     boolean useWen;
     boolean useJas;
+    private boolean quickPrayersActive = false;
 
     public int getCurrentDungTokens() {
         return VarManager.getVarValue(VarDomainType.PLAYER, 1097);
@@ -119,27 +117,21 @@ public class ED4 extends LoopingScript {
         }
         switch (botState) {
             case IDLE -> {
-                if (VarManager.getVarbitValue(16768) == 1) {
-                    ActionBar.usePrayer("Deflect Magic");
-                    println("Deactivated Deflect Magic prayer.");
-                    Execution.delay(RandomGenerator.nextInt(100, 500));
+                if (useQuickPrayers) {
+                    disableQuickPrayers();
                 }
-                if (VarManager.getVarbitValue(53280) == 1) {
-                    ActionBar.usePrayer("Ruination");
-                    println("Deactivated Ruination.");
-                    Execution.delay(RandomGenerator.nextInt(100, 500));
+                if (useJas) {
+                    deactivateScriptureOfJas();
+                } else if (useWen) {
+                    deactivateScriptureOfWen();
                 }
                 if (useWarsRetreat) {
                     useWarsTeleport();
                 } else {
-                    useShantayPass();
+                    faladorBank();
                 }
                 vulnBombUsed = false;
                 smokeCloudUsed = false;
-                quickPrayersActive = false;
-                if (useQuickPrayers) {
-                    manageQuickPrayers(false);
-                }
             }
             case BANKING -> {
                 if (useBank && useWarsRetreat) {
@@ -220,6 +212,7 @@ public class ED4 extends LoopingScript {
 
         }
     }
+
     private void walkTozammy() {
         Coordinate zammyLocation = new Coordinate(1761, 1343, 0);
 
@@ -228,15 +221,22 @@ public class ED4 extends LoopingScript {
 
         }
     }
-    private void useShantayPass() {
-        Coordinate taverlyBank = new Coordinate(2946, 3370, 0);
-        EntityResultSet<SceneObject> results = SceneObjectQuery.newQuery().name("Bank booth").results();
-
+    public void faladorBank() {
+        Coordinate taverlyBank = new Coordinate(2946, 3368, 0);
         if (Movement.traverse(NavPath.resolve(taverlyBank)) == TraverseEvent.State.FINISHED) {
-                SceneObject bankChest = results.random();
-                bankChest.interact("Load Last Preset from");
-                Execution.delay(RandomGenerator.nextInt(600, 800));
-                botState = BotState.WALK_TO_ZAMMY_PORTAL;
+            interactWithBank();
+        }
+    }
+
+    public void interactWithBank() {
+        EntityResultSet<SceneObject> results = SceneObjectQuery.newQuery().name("Bank booth").results();
+        SceneObject bankChest = results.nearest();
+        bankChest.interact("Load Last Preset from");
+        Execution.delay(RandomGenerator.nextInt(1500, 2250));
+        if (useFamiliar) {
+            manageFamiliarSummoning();
+        } else {
+            botState = BotState.WALK_TO_ZAMMY_PORTAL;
         }
     }
 
@@ -624,14 +624,9 @@ public class ED4 extends LoopingScript {
                 activateScriptureOfJas();
             }
             if (useQuickPrayers) {
-                manageQuickPrayers(true); // Pass the boolean directly
+                enableQuickPrayers();
             }
 
-            if (VarManager.getVarbitValue(16768) == 0 && useDeflectMagic) {
-                ActionBar.usePrayer("Deflect Magic");
-                println("Activated Deflect Magic prayer.");
-                Execution.delay(RandomGenerator.nextInt(100, 500));
-            }
 
             println("Moving towards the target coordinates.");
             Movement.walkTo(targetCoordinate.getX(), targetCoordinate.getY(), false);
@@ -681,10 +676,10 @@ public class ED4 extends LoopingScript {
 
             if (reached) {
                 println("Reached Destination.");
-                if (VarManager.getVarbitValue(53280) == 0 && useRuination) {
+                /*if (VarManager.getVarbitValue(53280) == 0 && useRuination) {
                     println("Activated Ruination: " + ActionBar.useAbility("Ruination"));
                     Execution.delay(RandomGenerator.nextInt(100, 500));
-                }
+                }*/
                 botState = BotState.ATTACK_CEBERUS;
             }
         }
@@ -795,41 +790,9 @@ public class ED4 extends LoopingScript {
         }
     }
 
-    public boolean isDarknessActive() {
-        Component darkness = ComponentQuery.newQuery(284).spriteId(30122).results().first();
-        return darkness != null;
-    }
 
-    public void useDarkness() {
-        if (getLocalPlayer() != null) {
-            if (!isDarknessActive()) {
-                ActionBar.useAbility("Darkness");
-                println("Using darkness!");
-                Execution.delay(RandomGenerator.nextInt(700, 1000));
-            }
-        }
-    }
-    private boolean quickPrayersActive = false;
-
-    public void manageQuickPrayers(boolean activate) {
-        if (getLocalPlayer() == null) {
-            return;
-        }
-        updateQuickPrayersActivation(activate);
-    }
-
-    private void updateQuickPrayersActivation(boolean activate) {
-        boolean isCurrentlyActive = isQuickPrayersActive();
-
-        if (activate && !isCurrentlyActive) {
-            activateQuickPrayers();
-        } else if (!activate && isCurrentlyActive) {
-            deactivateQuickPrayers();
-        }
-    }
-
-    private void activateQuickPrayers() {
-        if (!quickPrayersActive) {
+    public void enableQuickPrayers() {
+        if (!quickPrayersActive && !isQuickPrayersActive()) {
             println("Activating Quick Prayers.");
             if (ActionBar.useAbility("Quick-prayers 1")) {
                 println("Quick Prayers activated successfully.");
@@ -840,8 +803,8 @@ public class ED4 extends LoopingScript {
         }
     }
 
-    private void deactivateQuickPrayers() {
-        if (quickPrayersActive) {
+    public void disableQuickPrayers() {
+        if (quickPrayersActive && isQuickPrayersActive()) {
             println("Deactivating Quick Prayers.");
             if (ActionBar.useAbility("Quick-prayers 1")) {
                 println("Quick Prayers deactivated.");
@@ -1041,9 +1004,6 @@ public class ED4 extends LoopingScript {
         this.configuration.addProperty("useEssenceOfFinality", String.valueOf(this.useEssenceOfFinality));
         this.configuration.addProperty("useOverload", String.valueOf(this.useOverload));
         this.configuration.addProperty("useInvokeDeath", String.valueOf(this.useInvokeDeath));
-        this.configuration.addProperty("useDeflectMagic", String.valueOf(this.useDeflectMagic));
-        this.configuration.addProperty("useSorrow", String.valueOf(this.useSorrow));
-        this.configuration.addProperty("useRuination", String.valueOf(this.useRuination));
         this.configuration.addProperty("useDarkness", String.valueOf(this.useDarkness));
         this.configuration.addProperty("usePontifexRing", String.valueOf(this.usePontifexRing));
         this.configuration.addProperty("useMaxGuild", String.valueOf(this.useMaxGuild));
@@ -1064,9 +1024,6 @@ public class ED4 extends LoopingScript {
             this.useEssenceOfFinality = Boolean.parseBoolean(this.configuration.getProperty("useEssenceOfFinality"));
             this.useOverload = Boolean.parseBoolean(this.configuration.getProperty("useOverload"));
             this.useInvokeDeath = Boolean.parseBoolean(this.configuration.getProperty("useInvokeDeath"));
-            this.useDeflectMagic = Boolean.parseBoolean(this.configuration.getProperty("useDeflectMagic"));
-            this.useSorrow = Boolean.parseBoolean(this.configuration.getProperty("useSorrow"));
-            this.useRuination = Boolean.parseBoolean(this.configuration.getProperty("useRuination"));
             this.useDarkness = Boolean.parseBoolean(this.configuration.getProperty("useDarkness"));
             this.usePontifexRing = Boolean.parseBoolean(this.configuration.getProperty("usePontifexRing"));
             this.useMaxGuild = Boolean.parseBoolean(this.configuration.getProperty("useMaxGuild"));

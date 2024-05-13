@@ -117,9 +117,16 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                     script.useDarkness = ImGui.Checkbox("Use Darkness", script.useDarkness);
                     script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
                     script.usePrayerOrRestorePots = ImGui.Checkbox("Use Prayer Potions", script.usePrayerOrRestorePots);*/
-                script.useDeflectMagic = ImGui.Checkbox("Use Deflect Magic", script.useDeflectMagic);
-                /*script.useSorrow = ImGui.Checkbox("Use Sorrow", script.useSorrow);*/
-                script.useRuination = ImGui.Checkbox("Use Ruination", script.useRuination);
+                /*script.useDeflectMagic = ImGui.Checkbox("Use Deflect Magic", script.useDeflectMagic);
+                *//*script.useSorrow = ImGui.Checkbox("Use Sorrow", script.useSorrow);*//*
+                script.useRuination = ImGui.Checkbox("Use Ruination", script.useRuination);*/
+                ImGui.Text("You can use `Falador tablet` from the backpack to teleport if you do not have wars portal");
+                ImGui.Text("just disable the following `wars retreat` and `use bank`");
+                ImGui.Text("if using familiar and falador, you MUST have restore potions in your inventory");
+                script.useJas = ImGui.Checkbox("Use Jas Book", script.useJas);
+                script.useWen = ImGui.Checkbox("Use Wen Book", script.useWen);
+                script.useQuickPrayers = ImGui.Checkbox("Use Quick Prayers", script.useQuickPrayers);
+                script.useFamiliar = ImGui.Checkbox("Use Familiar", script.useFamiliar);
                 script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
                 script.useInvokeDeath = ImGui.Checkbox("Use Invoke Death", script.useInvokeDeath);
                 script.usePrayer = ImGui.Checkbox("Use Prayer Potions", script.usePrayer);
