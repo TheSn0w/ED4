@@ -62,17 +62,17 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
             ImGui.PushStyleVar(15, 10.f, 5f); // spacing between Text/tabs and checkboxes
             ImGui.PushStyleVar(16, 10.f, 5f);
             ImGui.PushStyleVar(17, 10.f, 5f);
-                if (isScriptRunning) {
-                    if (ImGui.Button("Stop Script")) {
-                        script.stopScript();
-                        isScriptRunning = false;
-                    }
-                } else {
-                    if (ImGui.Button("Start Script")) {
-                        script.startScript();
-                        isScriptRunning = true;
-                    }
+            if (isScriptRunning) {
+                if (ImGui.Button("Stop Script")) {
+                    script.stopScript();
+                    isScriptRunning = false;
                 }
+            } else {
+                if (ImGui.Button("Start Script")) {
+                    script.startScript();
+                    isScriptRunning = true;
+                }
+            }
             ImGui.SameLine();
             if (ImGui.Button("Save Settings")) {
                 try {
@@ -86,51 +86,37 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
             if (!saveSettingsFeedbackMessage.isEmpty()) {
                 ImGui.Text(saveSettingsFeedbackMessage);
             }
-                script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
-                script.useBank = ImGui.Checkbox("Use Bank", script.useBank);
-                    /*if(!script.useMaxGuild && !script.usePontifexRing)
-                    {
-                        script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
-                        if (script.useWarsRetreat) {
-                            script.useMaxGuild = false;
-                            script.usePontifexRing = false;
-                        }
-                    }
-                    ImGui.SameLine();
-                    if(!script.useWarsRetreat && !script.usePontifexRing)
-                    {
-                        script.useMaxGuild = ImGui.Checkbox("Use Max Guild", script.useMaxGuild);
-                        if (script.useMaxGuild) {
-                            script.useWarsRetreat = false;
-                            script.usePontifexRing = false;
-                        }
-                    }
-                    ImGui.SameLine();
-                    if(!script.useMaxGuild && !script.useWarsRetreat)
-                    {
-                        script.usePontifexRing = ImGui.Checkbox("Use Pontifex Ring", script.usePontifexRing);
-                        if (script.usePontifexRing) {
-                            script.useMaxGuild = false;
-                            script.useWarsRetreat = false;
-                        }
-                    }
-                    script.useDarkness = ImGui.Checkbox("Use Darkness", script.useDarkness);
-                    script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
-                    script.usePrayerOrRestorePots = ImGui.Checkbox("Use Prayer Potions", script.usePrayerOrRestorePots);*/
-                /*script.useDeflectMagic = ImGui.Checkbox("Use Deflect Magic", script.useDeflectMagic);
-                *//*script.useSorrow = ImGui.Checkbox("Use Sorrow", script.useSorrow);*//*
-                script.useRuination = ImGui.Checkbox("Use Ruination", script.useRuination);*/
-                ImGui.Text("You can use `Falador tablet` from the backpack to teleport if you do not have wars portal");
-                ImGui.Text("just disable the following `wars retreat` and `use bank`");
-                ImGui.Text("if using familiar and falador, you MUST have restore potions in your inventory");
+            script.useWarsRetreat = ImGui.Checkbox("Use Wars Retreat", script.useWarsRetreat);
+            ImGui.SameLine();
+            script.useBank = ImGui.Checkbox("Use Bank", script.useBank);
+            script.useMaxGuild = ImGui.Checkbox("Use Max Guild", script.useMaxGuild);
+            script.useShadowReefTeleport = ImGui.Checkbox("Use Shadow Reef Teleport", script.useShadowReefTeleport);
+
+            if (script.useMaxGuild) {
+                script.useWarsRetreat = false;
+                script.useBank = false;
+                script.useShadowReefTeleport = false;
+                script.killMages = true;
+            }
+
+
+                ImGui.SeparatorText("INSTRUCTIONS");
+                ImGui.Text("1) Choose teleport option from above, ALL SUPPORT BANKING when low on supplies`");
+                ImGui.Text("2) Choose Combat options");
+                ImGui.Text("3) The use Bank toggle only works with wars retreat, it constantly banks after every kill (disable)");
+                ImGui.Text("4) Shadow reef teleport required ring of kinship in inventory, it will buy tokens when you run out");
+                ImGui.Text("5) Kill mages will kill the 4 mages before teleporting out (enabled by necessity on max guild)");
+                ImGui.Text("6) you can use Falador teleport tablets if you dont have the above, just leave blank");
+                ImGui.Separator();
+                script.killMages = ImGui.Checkbox("Kill Mages then teleport?", script.killMages);
                 script.useSmokeCloud = ImGui.Checkbox("Use Smoke Cloud", script.useSmokeCloud);
                 script.useJas = ImGui.Checkbox("Use Jas Book", script.useJas);
                 script.useWen = ImGui.Checkbox("Use Wen Book", script.useWen);
                 script.useQuickPrayers = ImGui.Checkbox("Use Quick Prayers", script.useQuickPrayers);
                 script.useFamiliar = ImGui.Checkbox("Use Familiar", script.useFamiliar);
-                script.useOverload = ImGui.Checkbox("Use Overload", script.useOverload);
+                script.useOverloads = ImGui.Checkbox("Use Overload", script.useOverloads);
                 script.useInvokeDeath = ImGui.Checkbox("Use Invoke Death", script.useInvokeDeath);
-                script.usePrayer = ImGui.Checkbox("Use Prayer Potions", script.usePrayer);
+                script.usePrayerPots = ImGui.Checkbox("Use Prayer Potions", script.usePrayerPots);
                 script.useEssenceOfFinality = ImGui.Checkbox("Use Essence of Finality", script.useEssenceOfFinality);
                 if (ImGui.IsItemHovered()) {
                     ImGui.SetTooltip("Do not have Finger of Death in Revo bar.");
@@ -147,14 +133,6 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                     ED4.NecrosisStacksThreshold = 12;
                 }
                 ImGui.Text("My scripts state is: " + script.getBotState());
-                    /*if(ImGui.Button("Set State past portal (DEBUG)"))
-                    {
-                        script.setBotState(MainScript.BotState.ATED4);
-                    }
-                    if(ImGui.Button("Set State to Idle (DEBUG)"))
-                    {
-                        script.setBotState(MainScript.BotState.IDLE);
-                    }*/
                 ImGui.SeparatorText("Quick Stats");
                 updateAndDisplayDungTokens(script);
                 ImGui.PopStyleVar(3);
