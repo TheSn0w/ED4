@@ -341,16 +341,22 @@ public class ED4 extends LoopingScript {
     }
 
     public void enterZammy() {
-        if (getLocalPlayer() != null && !getLocalPlayer().isMoving()) {
-            EntityResultSet<SceneObject> sceneObjectQuery = SceneObjectQuery.newQuery().name("The Zamorakian Undercity").results();
-            if (!sceneObjectQuery.isEmpty()) {
-                Execution.delay(RandomGenerator.nextInt(800, 1000));
-                SceneObject portal = sceneObjectQuery.nearest();
+        while (getLocalPlayer() == null || getLocalPlayer().isMoving() || getLocalPlayer().getAnimationId() != -1) {
+            Execution.delay(RandomGenerator.nextInt(800, 1000));
+            println("Delaying until player is not moving or animating.");
+        }
+
+        EntityResultSet<SceneObject> sceneObjectQuery = SceneObjectQuery.newQuery().name("The Zamorakian Undercity").results();
+        if (!sceneObjectQuery.isEmpty()) {
+            SceneObject portal = sceneObjectQuery.nearest();
+            long startTime = System.currentTimeMillis();
+            long waitTime = RandomGenerator.nextInt(7500, 10000);
+            while (System.currentTimeMillis() - startTime < waitTime) {
                 boolean interacted = portal.interact("Enter");
                 println("Interacted with Wooden thing: " + interacted);
-                Execution.delayUntil(15000, Dialog::isOpen);
-                if (interacted && Dialog.isOpen()) {
+                if (interacted && Execution.delayUntil(RandomGenerator.nextInt(800, 1000), Dialog::isOpen)) {
                     botState = BotState.ACCEPT_DIALOG;
+                    break;
                 }
             }
         }
