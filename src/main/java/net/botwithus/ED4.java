@@ -346,19 +346,34 @@ public class ED4 extends LoopingScript {
             println("Delaying until player is not moving or animating.");
         }
 
-        EntityResultSet<SceneObject> sceneObjectQuery = SceneObjectQuery.newQuery().name("The Zamorakian Undercity").results();
-        if (!sceneObjectQuery.isEmpty()) {
-            SceneObject portal = sceneObjectQuery.nearest();
-            long startTime = System.currentTimeMillis();
-            long waitTime = RandomGenerator.nextInt(7500, 10000);
-            while (System.currentTimeMillis() - startTime < waitTime) {
+        long startTime = System.currentTimeMillis();
+        long waitTime = RandomGenerator.nextInt(7500, 10000);
+        while (System.currentTimeMillis() - startTime < waitTime) {
+            println("Searching for 'The Zamorakian Undercity' scene object...");
+            EntityResultSet<SceneObject> sceneObjectQuery = SceneObjectQuery.newQuery().name("The Zamorakian Undercity").results();
+            if (!sceneObjectQuery.isEmpty()) {
+                println("'The Zamorakian Undercity' scene object found.");
+                SceneObject portal = sceneObjectQuery.nearest();
+                println("Interacting with 'The Zamorakian Undercity' scene object...");
                 boolean interacted = portal.interact("Enter");
                 println("Interacted with Wooden thing: " + interacted);
-                if (interacted && Execution.delayUntil(RandomGenerator.nextInt(800, 1000), Dialog::isOpen)) {
-                    botState = BotState.ACCEPT_DIALOG;
-                    break;
+                if (interacted) {
+                    println("Interaction successful. Waiting for dialog to open...");
+                    if (Execution.delayUntil(RandomGenerator.nextInt(2500, 5000), Dialog::isOpen)) {
+                        println("Dialog opened. Changing bot state to ACCEPT_DIALOG.");
+                        botState = BotState.ACCEPT_DIALOG;
+                        break;
+                    } else {
+                        println("Dialog did not open within the expected time.");
+                    }
+                } else {
+                    println("Failed to interact with 'The Zamorakian Undercity' scene object.");
                 }
+            } else {
+                println("'The Zamorakian Undercity' scene object not found.");
             }
+            println("Delaying before checking again...");
+            Execution.delay(RandomGenerator.nextInt(800, 2500));
         }
     }
 
