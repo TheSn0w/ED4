@@ -359,7 +359,7 @@ public class ED4 extends LoopingScript {
                 println("Interacted with Wooden thing: " + interacted);
                 if (interacted) {
                     println("Interaction successful. Waiting for dialog to open...");
-                    if (Execution.delayUntil(RandomGenerator.nextInt(2500, 5000), Dialog::isOpen)) {
+                    if (Execution.delayUntil(RandomGenerator.nextInt(4000, 6000), Dialog::isOpen)) {
                         println("Dialog opened. Changing bot state to ACCEPT_DIALOG.");
                         botState = BotState.ACCEPT_DIALOG;
                         break;
@@ -1086,35 +1086,24 @@ public class ED4 extends LoopingScript {
                     if (option == null) {
                         continue;
                     }
-
-                    if (option.contains("No")) {
-                        Execution.delay(RandomGenerator.nextInt(800, 1000));
-                        Dialog.interact(option);
-                        println("Selected 'No' option");
-
-                        // Wait for the "Normal mode" option to appear
-                        boolean normalModeAppeared = Execution.delayUntil(5000, () -> {
-                            for (String nextOption : Dialog.getOptions()) {
-                                if (nextOption != null && nextOption.contains("Normal mode")) {
-                                    return true;
-                                }
-                            }
-                            return false;
-                        });  // Wait up to 5 seconds
-
-                        if (normalModeAppeared) {
-                            Execution.delay(RandomGenerator.nextInt(800, 1000));
-                            Dialog.interact("Normal mode");
-                            println("Selected 'Normal mode' option");
-                            botState = BotState.MOVE_TO_CEBERUS;
-                        } else {
-                            println("'Normal mode' option did not appear.");
-                            botState = BotState.INTERACT_WITH_ZAMMY;
-                        }
-
-                        break;  // Exit the loop after selecting the "No" option
-                    }
+                    println("Dialog option: " + option);
                 }
+
+                if (Dialog.getOptions().contains("No.")) {
+                    Execution.delay(RandomGenerator.nextInt(800, 1000));
+                    Dialog.interact("No.");
+                    println("Selected 'No' option");
+                }
+
+                Execution.delayUntil(5000, () -> Dialog.getOptions().contains("Normal mode"));
+
+                if (Dialog.getOptions().contains("Normal mode")) {
+                    Execution.delay(RandomGenerator.nextInt(800, 1000));
+                    Dialog.interact("Normal mode");
+                    println("Selected 'Normal mode' option");
+                }
+
+                botState = BotState.MOVE_TO_CEBERUS;
             }
         } else {
             Execution.delay(RandomGenerator.nextInt(600, 2500));
