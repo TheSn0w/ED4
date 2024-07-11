@@ -1099,8 +1099,8 @@ public class ED4 extends LoopingScript {
 
                 if (Dialog.getOptions().contains("Normal mode")) {
                     Execution.delay(RandomGenerator.nextInt(800, 1000));
-                    Dialog.interact("Normal mode");
-                    println("Selected 'Normal mode' option");
+                    MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77856776);
+                    println("Selected: 'Normal mode'");
                 }
 
                 botState = BotState.MOVE_TO_CEBERUS;
