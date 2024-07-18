@@ -1090,7 +1090,7 @@ public class ED4 extends LoopingScript {
                 }
 
                 if (Dialog.getOptions().contains("No.")) {
-                    Execution.delay(RandomGenerator.nextInt(800, 1000));
+                    Execution.delay(RandomGenerator.nextInt(1400, 2000));
                     Dialog.interact("No.");
                     println("Selected 'No' option");
                 }
