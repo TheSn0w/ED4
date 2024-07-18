@@ -1098,7 +1098,7 @@ public class ED4 extends LoopingScript {
                 Execution.delayUntil(5000, () -> Dialog.getOptions().contains("Normal mode"));
 
                 if (Dialog.getOptions().contains("Normal mode")) {
-                    Execution.delay(RandomGenerator.nextInt(800, 1000));
+                    Execution.delay(RandomGenerator.nextInt(1400, 2000));
                     MiniMenu.interact(ComponentAction.DIALOGUE.getType(), 0, -1, 77856776);
                     println("Selected: 'Normal mode'");
                 }
