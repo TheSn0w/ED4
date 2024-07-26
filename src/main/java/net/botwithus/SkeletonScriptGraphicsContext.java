@@ -96,7 +96,6 @@ public class SkeletonScriptGraphicsContext extends ScriptGraphicsContext {
                 script.useWarsRetreat = false;
                 script.useBank = false;
                 script.useShadowReefTeleport = false;
-                script.killMages = true;
             }
 
 
